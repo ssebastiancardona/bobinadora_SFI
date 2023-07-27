@@ -30,6 +30,8 @@ int white = 0xFFFFFF;
 int counter = 0;
 int RPM_SERVO_1 = 0;
 int RPM_SERVO_2 = 0;
+int vueltas_paro = 0;
+int cantidad_ciclos = 0;
 int page = 0;
 int Ready = 1;
 int submenu = 0;
@@ -38,25 +40,42 @@ bool clk_State;
 bool Last_State;
 bool dt_State;
 
+int sw = 19; /// suitch del encoder
+
+// pines servomotor
+int PUL = 1;
+int DIR = 3;
+
 ///////////////Estados Switch case/////////////////////
 
 #define CERO 0
 #define PARAMETROS 1
-#define M_PARAMETROS_SERVO1 2
-#define M_PARAMETROS_SERVO2 3
-#define M_PARAMETROS_CANTIDAD_VUELTAS 4
-#define M_PARAMETROS_CANTIDAD_CICLOS 5
-#define PRODUCCION 6
-#define M_PRODUCCION 7
-#define M_PARAMETROS_BACK 8
-#define INICIO_VELOCIDAD_SERVO_1 9
-#define VELOCIDAD_SERVO_1 10
-#define SET_VELOCIDAD_SERVO_1 11
-#define BACK_VELOCIDAD_SERVO_1 12
-#define INICIO_VELOCIDAD_SERVO_2 13
-#define VELOCIDAD_SERVO_2 14
-#define SET_VELOCIDAD_SERVO_2 15
-#define BACK_VELOCIDAD_SERVO_2 16
+#define PRODUCCION 2
+#define START_PRODUCCION 3
+#define STOP_PRODUCCION 4
+#define BACK_PRODUCCION 5
+#define M_PARAMETROS_SERVO1 6
+#define M_PARAMETROS_SERVO2 7
+#define M_PARAMETROS_VUELTAS_PARA_PARO 8
+#define M_PARAMETROS_CANTIDAD_CICLOS 9
+#define M_PRODUCCION 10
+#define M_PARAMETROS_BACK 11
+#define INICIO_VELOCIDAD_SERVO_1 12
+#define VELOCIDAD_SERVO_1 13
+#define SET_VELOCIDAD_SERVO_1 14
+#define BACK_VELOCIDAD_SERVO_1 15
+#define INICIO_VELOCIDAD_SERVO_2 16
+#define VELOCIDAD_SERVO_2 17
+#define SET_VELOCIDAD_SERVO_2 18
+#define BACK_VELOCIDAD_SERVO_2 19
+#define INICIO_VUELTAS_PARA_PARO 20
+#define VUELTAS_PARA_PARO 21
+#define SET_VUELTAS_PARA_PARO 22
+#define BACK_VUELTAS_PARA_PARO 23
+#define INICIO_CANTIDAD_DE_CICLOS 24
+#define CANTIDAD_DE_CICLOS 25
+#define SET_CANTIDAD_DE_CICLOS 26
+#define BACK_CANTIDAD_DE_CICLOS 27
 
 uint8_t estado;
 bool boton = false;
@@ -65,8 +84,14 @@ void setup()
 {
   pinMode(34, INPUT);
   pinMode(35, INPUT);
-  pinMode(15, INPUT);
-  digitalWrite(15, LOW);
+  pinMode(sw, INPUT);
+
+  pinMode(PUL, OUTPUT);
+  pinMode(DIR, OUTPUT);
+  pinMode(36, INPUT);
+  pinMode(39, INPUT);
+
+  digitalWrite(sw, LOW);
   attachInterrupt(34, isr, CHANGE);
   attachInterrupt(35, isr, CHANGE);
 
@@ -96,6 +121,17 @@ void setup()
   tft.setCursor(135, 215, 2);
   tft.println("Produccion");
   delay(10);
+  /*
+    ///////////////////////////MIERDERO SERVOMOTOR////////////////////////////
+     digitalWrite(DIR,LOW);
+    for (int i=0; i<280000;i++)
+    {
+      digitalWrite(PUL,HIGH);
+      delayMicroseconds(100);
+      digitalWrite(PUL,LOW);
+      delayMicroseconds(100);
+    }
+    ////////////////////////FIN MIERDERO SERVOMOTOR/////////////////////////////////////*/
 }
 
 void loop()
@@ -104,7 +140,7 @@ void loop()
 
   ///////////////////////////Fin Cambios de Submenu//////////////////////////
 
-  if ((last_counter > counter) || (last_counter < counter) || (digitalRead(15) == HIGH)) // Only print on the LCD when a step is detected or the button is pushed.
+  if ((last_counter > counter) || (last_counter < counter) || (digitalRead(sw) == HIGH)) // Only print on the LCD when a step is detected or the button is pushed.
   {
     Ready = 1;
     ////////////////////////////////////////////////////INICIO PAGINAS DEL MENU////////////////
@@ -146,7 +182,7 @@ void loop()
 
       if (4 < counter && counter < 6)
       {
-        estado = M_PARAMETROS_CANTIDAD_VUELTAS;
+        estado = M_PARAMETROS_VUELTAS_PARA_PARO;
         page = 5;
         delay(10);
       }
@@ -212,13 +248,13 @@ void loop()
       if (2 < counter && counter < 4)
       {
         estado = VELOCIDAD_SERVO_2;
-        page = 12;
+        page = 13;
         delay(10);
       }
       if (4 < counter && counter < 6)
       {
         estado = BACK_VELOCIDAD_SERVO_2;
-        page = 13;
+        page = 14;
         delay(10);
       }
     }
@@ -227,33 +263,116 @@ void loop()
       if (0 < counter && counter < 2)
       {
         estado = SET_VELOCIDAD_SERVO_2;
-        page = 14;
+        page = 15;
         delay(10);
       }
     }
 
     /*FIN PAGINA VELOCIDAD_SERVO_2*/
 
+    /*INICIO PAGINA VUELTAS_PARA_PARO*/
+    if (submenu == 7)
+    {
+      if (0 < counter && counter < 2)
+      {
+        estado = INICIO_VUELTAS_PARA_PARO;
+        page = 16;
+        delay(10);
+      }
+      if (2 < counter && counter < 4)
+      {
+        estado = VUELTAS_PARA_PARO;
+        page = 17;
+        delay(10);
+      }
+      if (4 < counter && counter < 6)
+      {
+        estado = BACK_VUELTAS_PARA_PARO;
+        page = 18;
+        delay(10);
+      }
+    }
+    if (submenu == 8)
+    {
+      if (0 < counter && counter < 2)
+      {
+        estado = SET_VUELTAS_PARA_PARO;
+        page = 19;
+        delay(10);
+      }
+    }
+
+    /*FIN PAGINA VUELTAS_PARA_PARO*/
+
+    /*INICIO PAGINA CANTIDAD_DE_CICLOS*/
+    if (submenu == 9)
+    {
+      if (0 < counter && counter < 2)
+      {
+        estado = INICIO_CANTIDAD_DE_CICLOS;
+        page = 20;
+        delay(10);
+      }
+      if (2 < counter && counter < 4)
+      {
+        estado = CANTIDAD_DE_CICLOS;
+        page = 21;
+        delay(10);
+      }
+      if (4 < counter && counter < 6)
+      {
+        estado = BACK_CANTIDAD_DE_CICLOS;
+        page = 22;
+        delay(10);
+      }
+    }
+    if (submenu == 10)
+    {
+      if (0 < counter && counter < 2)
+      {
+        estado = SET_CANTIDAD_DE_CICLOS;
+        page = 23;
+        delay(10);
+      }
+    }
+
+    /*FIN PAGINA CANTIDAD_DE_CICLOS*/
+
     /*-----------------------------------------------------------------------------------------*/
 
     ////////////////////////////////////////////////////INICIO LIMITES ENCODER////////////////
 
-    if (submenu == 0 && counter > 4)
+    if (submenu == 0 && counter > 4) // inicio parametros y produccion
     {
       counter = 4;
     }
 
-    if (submenu == 1 && counter > 10)
+    if (submenu == 1 && counter > 10) // inicio menu servos, cantidad de vueltas, cantidad de ciclos...
     {
       counter = 10;
     }
 
-    if (submenu == 3 && counter > 4)
+    if (submenu == 3 && counter > 4) // inicio velocidad servo 1
     {
       counter = 4;
     }
 
     if (submenu == 5 && counter > 4)
+    {
+      counter = 4;
+    }
+
+    if (submenu == 7 && counter > 4)
+    {
+      counter = 4;
+    }
+
+    if (submenu == 8 && counter > 4)
+    {
+      counter = 4;
+    }
+
+    if (submenu == 9 && counter > 4)
     {
       counter = 4;
     }
@@ -269,7 +388,7 @@ void loop()
   /* ------------------------------------------------------------------------------------------*/
 
   ///////////////////////////////////////////////////INICIO ACCION PULSADOR/////////////////
-  if (digitalRead(15) == HIGH && page == 7) // BACK_PARAMETROS
+  if (digitalRead(sw) == HIGH && page == 7) // BACK_PARAMETROS
   {
     submenu = 0;
     counter = 0;
@@ -277,36 +396,43 @@ void loop()
     page = 7;
     delay(300);
   }
-  if (digitalRead(15) == HIGH && page == 1)
+  if (digitalRead(sw) == HIGH && page == 1)
   {
     submenu = 1;
     counter = 0;
     estado = M_PARAMETROS_SERVO1;
     delay(300);
   }
-  ///////////////////////////////////////////////////ACCION PULSADOR VELOCIDAD SERVO 1///
-  if (digitalRead(15) == HIGH && page == 3)
+  if (digitalRead(sw) == HIGH && page == 2)
+  {
+    submenu = 100;
+    counter = 0;
+    estado = START_PRODUCCION;
+    delay(300);
+  }
+  ///////////////////////////////////////////////////ACCION PULSADOR VELOCIDAD SERVO 1//////////////////////
+  if (digitalRead(sw) == HIGH && page == 3)
   {
     submenu = 3;
     counter = 0;
     estado = INICIO_VELOCIDAD_SERVO_1;
     delay(300);
   }
-  if (digitalRead(15) == HIGH && page == 9)
+  if (digitalRead(sw) == HIGH && page == 9)
   {
     submenu = 4;
     counter = 0;
     estado = SET_VELOCIDAD_SERVO_1;
     delay(300);
   }
-  if (digitalRead(15) == HIGH && page == 10)
+  if (digitalRead(sw) == HIGH && page == 10)
   {
     submenu = 1;
     counter = 0;
     estado = M_PARAMETROS_SERVO1;
     delay(300);
   }
-  if (digitalRead(15) == HIGH && page == 11)
+  if (digitalRead(sw) == HIGH && page == 11)
   {
     submenu = 3;
     counter = 0;
@@ -316,35 +442,97 @@ void loop()
   ///////////////////////////////////////////////////FIN ACCION PULSADOR VELOCIDAD SERVO 1
 
   ///////////////////////////////////////////////////ACCION PULSADOR VELOCIDAD SERVO 2///
-  if (digitalRead(15) == HIGH && page == 4)
+  if (digitalRead(sw) == HIGH && page == 4)
   {
     submenu = 5;
     counter = 0;
     estado = INICIO_VELOCIDAD_SERVO_2;
     delay(300);
   }
-  if (digitalRead(15) == HIGH && page == 12)
+  if (digitalRead(sw) == HIGH && page == 13)
   {
     submenu = 6;
     counter = 0;
     estado = SET_VELOCIDAD_SERVO_2;
     delay(300);
   }
-  if (digitalRead(15) == HIGH && page == 13)
+  if (digitalRead(sw) == HIGH && page == 14)
   {
     submenu = 1;
     counter = 0;
     estado = M_PARAMETROS_SERVO1;
     delay(300);
   }
-  if (digitalRead(15) == HIGH && page == 14)
+  if (digitalRead(sw) == HIGH && page == 15)
   {
     submenu = 5;
     counter = 0;
     estado = INICIO_VELOCIDAD_SERVO_2;
     delay(300);
   }
-  ///////////////////////////////////////////////////FIN ACCION PULSADOR VELOCIDAD SERVO 2
+  ///////////////////////////////////////////////////FIN ACCION PULSADOR VELOCIDAD SERVO 2////////////////
+
+  ///////////////////////////////////////////////////ACCION PULSADOR VUELTAS PARA PARO////////////////////
+  if (digitalRead(sw) == HIGH && page == 5)
+  {
+    submenu = 7;
+    counter = 0;
+    estado = INICIO_VUELTAS_PARA_PARO;
+    delay(300);
+  }
+  if (digitalRead(sw) == HIGH && page == 17)
+  {
+    submenu = 8;
+    counter = 0;
+    estado = SET_VUELTAS_PARA_PARO;
+    delay(300);
+  }
+  if (digitalRead(sw) == HIGH && page == 18)
+  {
+    submenu = 1;
+    counter = 0;
+    estado = M_PARAMETROS_SERVO1;
+    delay(300);
+  }
+  if (digitalRead(sw) == HIGH && page == 19)
+  {
+    submenu = 7;
+    counter = 0;
+    estado = INICIO_VUELTAS_PARA_PARO;
+    delay(300);
+  }
+  ///////////////////////////////////////////////////FIN ACCION PULSADOR VUELTAS PARA PARO
+
+  ///////////////////////////////////////////////////ACCION PULSADOR CANTIDAD DE CICLOS////////////////////
+  if (digitalRead(sw) == HIGH && page == 6)
+  {
+    submenu = 9;
+    counter = 0;
+    estado = INICIO_CANTIDAD_DE_CICLOS;
+    delay(300);
+  }
+  if (digitalRead(sw) == HIGH && page == 21)
+  {
+    submenu = 10;
+    counter = 0;
+    estado = SET_CANTIDAD_DE_CICLOS;
+    delay(300);
+  }
+  if (digitalRead(sw) == HIGH && page == 22)
+  {
+    submenu = 1;
+    counter = 0;
+    estado = M_PARAMETROS_SERVO1;
+    delay(300);
+  }
+  if (digitalRead(sw) == HIGH && page == 23)
+  {
+    submenu = 9;
+    counter = 0;
+    estado = INICIO_CANTIDAD_DE_CICLOS;
+    delay(300);
+  }
+  ///////////////////////////////////////////////////FIN ACCION PULSADOR CANTIDAD DE CICLOS
 
   ///////////////////////////////////////////////////FIN ACCIONES PULSADORES/////////////////
 
@@ -380,7 +568,7 @@ void loop()
     tft.setCursor(135, 215, 2);
     tft.println("Produccion");
     delay(10);
-    if (digitalRead(15) == HIGH)
+    if (digitalRead(sw) == HIGH)
     {
       delay(100);
     }
@@ -412,13 +600,98 @@ void loop()
     tft.setTextSize(3);
     tft.setCursor(135, 215, 2);
     tft.println("Produccion");
-    if (digitalRead(15) == HIGH)
+    if (digitalRead(sw) == HIGH)
     {
       delay(10);
     }
     estado = CERO;
     delay(10);
     break;
+
+  case START_PRODUCCION:
+
+    tft.fillScreen(TFT_WHITE);
+    tft.fillCircle(430, 270, 45, TFT_BLUE);
+    tft.setCursor(400, 250);
+    tft.setTextSize(2);
+    tft.setTextColor(TFT_WHITE);
+    tft.println("BACK");
+
+    tft.setTextColor(TFT_BLACK);
+    tft.setTextSize(3);
+    tft.setCursor(120, 80, 2);
+    tft.println("PRODUCCION");
+
+    tft.fillRoundRect(177, 165, 120, 80, 10, TFT_GREEN);
+    tft.setTextColor(TFT_BLACK);
+    tft.setTextSize(3);
+    tft.setCursor(177, 175, 2);
+    tft.println("START");
+
+    if (digitalRead(sw))
+    {
+      delay(10);
+    }
+    estado = CERO;
+    delay(10);
+    break;
+
+  case STOP_PRODUCCION:
+
+    tft.fillScreen(TFT_WHITE);
+    tft.fillCircle(430, 270, 45, TFT_BLUE);
+    tft.setCursor(400, 250);
+    tft.setTextSize(2);
+    tft.setTextColor(TFT_WHITE);
+    tft.println("BACK");
+
+    tft.setTextColor(TFT_BLACK);
+    tft.setTextSize(3);
+    tft.setCursor(50, 70, 2);
+    tft.println("PRODUCCION");
+
+    tft.fillRoundRect(177, 165, 85, 80, 10, TFT_RED);
+    tft.setTextColor(TFT_BLACK);
+    tft.setTextSize(3);
+    tft.setCursor(177, 170, 2);
+    tft.println("STOP");
+
+    if (digitalRead(sw))
+    {
+      delay(10);
+    }
+    estado = CERO;
+    delay(10);
+    break;
+
+  case BACK_PRODUCCION:
+
+    tft.fillScreen(TFT_WHITE);
+    tft.fillCircle(430, 270, 45, TFT_BLUE);
+    tft.setCursor(400, 250);
+    tft.setTextSize(2);
+    tft.setTextColor(TFT_WHITE);
+    tft.println("BACK");
+
+    tft.setTextColor(TFT_BLACK);
+    tft.setTextSize(3);
+    tft.setCursor(50, 70, 2);
+    tft.println("PRODUCCION");
+
+    tft.fillRoundRect(197, 165, 85, 55, 10, TFT_RED);
+    tft.setTextColor(TFT_BLACK);
+    tft.setTextSize(3);
+    tft.setCursor(200, 170, 2);
+    tft.println("STOP");
+
+    if (digitalRead(sw) == HIGH)
+    {
+      delay(10);
+    }
+    estado = CERO;
+    delay(10);
+    break;
+
   case M_PARAMETROS_SERVO1:
 
     tft.fillScreen(TFT_WHITE);
@@ -451,7 +724,7 @@ void loop()
     tft.setTextSize(3);
     tft.setCursor(13, 235, 2);
     tft.println("Cantidad de Ciclos");
-    if (digitalRead(15) == HIGH)
+    if (digitalRead(sw) == HIGH)
     {
       delay(10);
     }
@@ -489,14 +762,14 @@ void loop()
     tft.setTextSize(3);
     tft.setCursor(13, 235, 2);
     tft.println("Cantidad de Ciclos");
-    if (digitalRead(15) == HIGH)
+    if (digitalRead(sw) == HIGH)
     {
       delay(10);
     }
     estado = CERO;
     delay(10);
     break;
-  case M_PARAMETROS_CANTIDAD_VUELTAS:
+  case M_PARAMETROS_VUELTAS_PARA_PARO:
     tft.fillScreen(TFT_WHITE);
     tft.fillCircle(430, 50, 45, TFT_BLUE);
     tft.setCursor(390, 40);
@@ -526,7 +799,7 @@ void loop()
     tft.setTextSize(3);
     tft.setCursor(13, 235, 2);
     tft.println("Cantidad de Ciclos");
-    if (digitalRead(15) == HIGH)
+    if (digitalRead(sw) == HIGH)
     {
       delay(10);
     }
@@ -563,7 +836,7 @@ void loop()
     tft.setTextSize(3);
     tft.setCursor(13, 235, 2);
     tft.println("Cantidad de Ciclos");
-    if (digitalRead(15) == HIGH)
+    if (digitalRead(sw) == HIGH)
     {
       delay(10);
     }
@@ -601,7 +874,7 @@ void loop()
     tft.setTextSize(3);
     tft.setCursor(13, 235, 2);
     tft.println("Cantidad de Ciclos");
-    if (digitalRead(15) == HIGH)
+    if (digitalRead(sw) == HIGH)
     {
       delay(10);
     }
@@ -631,7 +904,7 @@ void loop()
     tft.setCursor(200, 170, 2);
     tft.println(RPM_SERVO_1);
 
-    if (digitalRead(15) == HIGH)
+    if (digitalRead(sw) == HIGH)
     {
       delay(10);
     }
@@ -661,7 +934,7 @@ void loop()
     tft.setCursor(200, 170, 2);
     tft.println(RPM_SERVO_1);
 
-    if (digitalRead(15) == HIGH)
+    if (digitalRead(sw) == HIGH)
     {
       delay(10);
     }
@@ -691,7 +964,7 @@ void loop()
     tft.setCursor(200, 170, 2);
     tft.println(RPM_SERVO_1);
 
-    if (digitalRead(15) == HIGH)
+    if (digitalRead(sw) == HIGH)
     {
       delay(10);
     }
@@ -721,7 +994,7 @@ void loop()
     tft.setCursor(200, 170, 2);
     tft.println(RPM_SERVO_1);
 
-    if (digitalRead(15))
+    if (digitalRead(sw))
     {
       delay(10);
     }
@@ -752,7 +1025,7 @@ void loop()
     tft.setCursor(200, 170, 2);
     tft.println(RPM_SERVO_2);
 
-    if (digitalRead(15) == HIGH)
+    if (digitalRead(sw) == HIGH)
     {
       delay(10);
     }
@@ -782,7 +1055,7 @@ void loop()
     tft.setCursor(200, 170, 2);
     tft.println(RPM_SERVO_2);
 
-    if (digitalRead(15) == HIGH)
+    if (digitalRead(sw) == HIGH)
     {
       delay(10);
     }
@@ -812,7 +1085,7 @@ void loop()
     tft.setCursor(200, 170, 2);
     tft.println(RPM_SERVO_2);
 
-    if (digitalRead(15) == HIGH)
+    if (digitalRead(sw) == HIGH)
     {
       delay(10);
     }
@@ -842,16 +1115,259 @@ void loop()
     tft.setCursor(200, 170, 2);
     tft.println(RPM_SERVO_2);
 
-    if (digitalRead(15))
+    if (digitalRead(sw))
     {
       delay(10);
     }
     estado = CERO;
     delay(10);
     break;
-  }
 
-  //////////////////////////////////////////////////FIN SWITCH CASE//////////////////////////
+    //////////////////////////////////////////////////VUELTAS PARA PARO////////////////////////
+  case INICIO_VUELTAS_PARA_PARO:
+
+    tft.fillScreen(TFT_WHITE);
+    tft.fillCircle(430, 270, 45, TFT_GREY);
+    tft.setCursor(400, 250);
+    tft.setTextSize(2);
+    tft.setTextColor(TFT_WHITE);
+    tft.println("BACK");
+    // tft.drawRoundRect(10, 20, 360, 55, 10, TFT_GREY);
+    tft.setTextColor(TFT_BLACK);
+    tft.setTextSize(3);
+    tft.setCursor(50, 70, 2);
+    tft.println("Vueltas para paro");
+    // tft.fillRoundRect
+    // tft.drawRoundRect(197, 165, 85, 55, 10, TFT_GREY);
+    tft.setTextColor(TFT_BLACK);
+    tft.setTextSize(3);
+    tft.setCursor(200, 120, 2);
+    // tft.println("RPM");
+    tft.setCursor(200, 170, 2);
+    tft.println(vueltas_paro);
+
+    if (digitalRead(sw) == HIGH)
+    {
+      delay(10);
+    }
+    estado = CERO;
+    delay(10);
+    break;
+
+  case VUELTAS_PARA_PARO:
+
+    tft.fillScreen(TFT_WHITE);
+    tft.fillCircle(430, 270, 45, TFT_GREY);
+    tft.setCursor(400, 250);
+    tft.setTextSize(2);
+    tft.setTextColor(TFT_WHITE);
+    tft.println("BACK");
+    // tft.drawRoundRect(10, 20, 360, 55, 10, TFT_GREY);
+    tft.setTextColor(TFT_BLACK);
+    tft.setTextSize(3);
+    tft.setCursor(50, 70, 2);
+    tft.println("Vueltas para paro");
+    // tft.fillRoundRect
+    tft.drawRoundRect(197, 165, 85, 55, 10, TFT_GREY);
+    tft.setTextColor(TFT_BLACK);
+    tft.setTextSize(3);
+    tft.setCursor(200, 120, 2);
+    // tft.println("RPM");
+    tft.setCursor(200, 170, 2);
+    tft.println(vueltas_paro);
+
+    if (digitalRead(sw) == HIGH)
+    {
+      delay(10);
+    }
+    estado = CERO;
+    delay(10);
+    break;
+
+  case BACK_VUELTAS_PARA_PARO:
+
+    tft.fillScreen(TFT_WHITE);
+    tft.fillCircle(430, 270, 45, TFT_BLUE);
+    tft.setCursor(400, 250);
+    tft.setTextSize(2);
+    tft.setTextColor(TFT_WHITE);
+    tft.println("BACK");
+
+    tft.setTextColor(TFT_BLACK);
+    tft.setTextSize(3);
+    tft.setCursor(50, 70, 2);
+    tft.println("Vueltas para paro");
+
+    tft.setTextColor(TFT_BLACK);
+    tft.setTextSize(3);
+    tft.setCursor(200, 120, 2);
+    // tft.println("RPM");
+
+    tft.setCursor(200, 170, 2);
+    tft.println(vueltas_paro);
+
+    if (digitalRead(sw) == HIGH)
+    {
+      delay(10);
+    }
+    estado = CERO;
+    delay(10);
+    break;
+
+  case SET_VUELTAS_PARA_PARO:
+
+    tft.fillScreen(TFT_WHITE);
+    tft.fillCircle(430, 270, 45, TFT_GREY);
+    tft.setCursor(400, 250);
+    tft.setTextSize(2);
+    tft.setTextColor(TFT_WHITE);
+    tft.println("BACK");
+
+    tft.setTextColor(TFT_BLACK);
+    tft.setTextSize(3);
+    tft.setCursor(50, 70, 2);
+    tft.println("Vueltas para paro");
+
+    tft.fillRoundRect(197, 165, 85, 55, 10, TFT_BLUE);
+    tft.setTextColor(TFT_BLACK);
+    tft.setTextSize(3);
+    tft.setCursor(200, 120, 2);
+    // tft.println("RPM");
+    tft.setCursor(200, 170, 2);
+    tft.println(vueltas_paro);
+
+    if (digitalRead(sw))
+    {
+      delay(10);
+    }
+    estado = CERO;
+    delay(10);
+    break;
+    //////////////////////////////////////////////FIN VUELTAS PARA PARO////////////////////////
+
+    //////////////////////////////////////////////////CANTIDAD DE CICLOS////////////////////////
+  case INICIO_CANTIDAD_DE_CICLOS:
+
+    tft.fillScreen(TFT_WHITE);
+    tft.fillCircle(430, 270, 45, TFT_GREY);
+    tft.setCursor(400, 250);
+    tft.setTextSize(2);
+    tft.setTextColor(TFT_WHITE);
+    tft.println("BACK");
+    // tft.drawRoundRect(10, 20, 360, 55, 10, TFT_GREY);
+    tft.setTextColor(TFT_BLACK);
+    tft.setTextSize(3);
+    tft.setCursor(50, 70, 2);
+    tft.println("Cantidad de ciclos");
+    // tft.fillRoundRect
+    // tft.drawRoundRect(197, 165, 85, 55, 10, TFT_GREY);
+    tft.setTextColor(TFT_BLACK);
+    tft.setTextSize(3);
+    tft.setCursor(200, 120, 2);
+    // tft.println("RPM");
+    tft.setCursor(200, 170, 2);
+    tft.println(cantidad_ciclos);
+
+    if (digitalRead(sw) == HIGH)
+    {
+      delay(10);
+    }
+    estado = CERO;
+    delay(10);
+    break;
+
+  case CANTIDAD_DE_CICLOS:
+
+    tft.fillScreen(TFT_WHITE);
+    tft.fillCircle(430, 270, 45, TFT_GREY);
+    tft.setCursor(400, 250);
+    tft.setTextSize(2);
+    tft.setTextColor(TFT_WHITE);
+    tft.println("BACK");
+    // tft.drawRoundRect(10, 20, 360, 55, 10, TFT_GREY);
+    tft.setTextColor(TFT_BLACK);
+    tft.setTextSize(3);
+    tft.setCursor(50, 70, 2);
+    tft.println("Cantidad de ciclos");
+    // tft.fillRoundRect
+    tft.drawRoundRect(197, 165, 85, 55, 10, TFT_GREY);
+    tft.setTextColor(TFT_BLACK);
+    tft.setTextSize(3);
+    tft.setCursor(200, 120, 2);
+    // tft.println("RPM");
+    tft.setCursor(200, 170, 2);
+    tft.println(cantidad_ciclos);
+
+    if (digitalRead(sw) == HIGH)
+    {
+      delay(10);
+    }
+    estado = CERO;
+    delay(10);
+    break;
+
+  case BACK_CANTIDAD_DE_CICLOS:
+
+    tft.fillScreen(TFT_WHITE);
+    tft.fillCircle(430, 270, 45, TFT_BLUE);
+    tft.setCursor(400, 250);
+    tft.setTextSize(2);
+    tft.setTextColor(TFT_WHITE);
+    tft.println("BACK");
+
+    tft.setTextColor(TFT_BLACK);
+    tft.setTextSize(3);
+    tft.setCursor(50, 70, 2);
+    tft.println("Cantidad de ciclos");
+
+    tft.setTextColor(TFT_BLACK);
+    tft.setTextSize(3);
+    tft.setCursor(200, 120, 2);
+    // tft.println("RPM");
+
+    tft.setCursor(200, 170, 2);
+    tft.println(cantidad_ciclos);
+
+    if (digitalRead(sw) == HIGH)
+    {
+      delay(10);
+    }
+    estado = CERO;
+    delay(10);
+    break;
+
+  case SET_CANTIDAD_DE_CICLOS:
+
+    tft.fillScreen(TFT_WHITE);
+    tft.fillCircle(430, 270, 45, TFT_GREY);
+    tft.setCursor(400, 250);
+    tft.setTextSize(2);
+    tft.setTextColor(TFT_WHITE);
+    tft.println("BACK");
+
+    tft.setTextColor(TFT_BLACK);
+    tft.setTextSize(3);
+    tft.setCursor(50, 70, 2);
+    tft.println("Cantidad de ciclos");
+
+    tft.fillRoundRect(197, 165, 85, 55, 10, TFT_BLUE);
+    tft.setTextColor(TFT_BLACK);
+    tft.setTextSize(3);
+    tft.setCursor(200, 120, 2);
+    // tft.println("RPM");
+    tft.setCursor(200, 170, 2);
+    tft.println(cantidad_ciclos);
+
+    if (digitalRead(sw))
+    {
+      delay(10);
+    }
+    estado = CERO;
+    delay(10);
+    break;
+    //////////////////////////////////////////////FIN CANTIDAD DE CICLOS////////////////////////
+    //////////////////////////////////////////////////FIN SWITCH CASE//////////////////////////
+  }
 }
 /* ------------------------------------------------------------------------------------------*/
 
@@ -912,5 +1428,42 @@ void isr()
       estado = SET_VELOCIDAD_SERVO_2;
     }
   }
+
+  if (submenu == 8 && clk_State != Last_State)
+  {
+    // void menu();
+    // If the data state is different to the clock state, that means the encoder is rotating clockwise
+    if (dt_State != clk_State)
+    {
+      vueltas_paro++;
+      delayMicroseconds(1000);
+      estado = SET_VUELTAS_PARA_PARO;
+    }
+    else
+    {
+      vueltas_paro--;
+      delayMicroseconds(1000);
+      estado = SET_VUELTAS_PARA_PARO;
+    }
+  }
+
+  if (submenu == 10 && clk_State != Last_State)
+  {
+    // void menu();
+    // If the data state is different to the clock state, that means the encoder is rotating clockwise
+    if (dt_State != clk_State)
+    {
+      cantidad_ciclos++;
+      delayMicroseconds(1000);
+      estado = SET_CANTIDAD_DE_CICLOS;
+    }
+    else
+    {
+      cantidad_ciclos--;
+      delayMicroseconds(1000);
+      estado = SET_CANTIDAD_DE_CICLOS;
+    }
+  }
+
   Last_State = clk_State; // Updates the previous state of the data with the current state
 }
