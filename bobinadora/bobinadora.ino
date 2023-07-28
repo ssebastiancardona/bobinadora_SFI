@@ -43,8 +43,12 @@ bool dt_State;
 int sw = 19; /// suitch del encoder
 
 // pines servomotor
-int PUL = 1;
-int DIR = 3;
+int pul_l = 1;
+int dir_l = 3;
+int pul_r = 23;
+int dir_r = 22;
+int enable_r = 16;
+int enable_l = 17;
 
 ///////////////Estados Switch case/////////////////////
 
@@ -54,28 +58,32 @@ int DIR = 3;
 #define START_PRODUCCION 3
 #define STOP_PRODUCCION 4
 #define BACK_PRODUCCION 5
-#define M_PARAMETROS_SERVO1 6
-#define M_PARAMETROS_SERVO2 7
-#define M_PARAMETROS_VUELTAS_PARA_PARO 8
-#define M_PARAMETROS_CANTIDAD_CICLOS 9
-#define M_PRODUCCION 10
-#define M_PARAMETROS_BACK 11
-#define INICIO_VELOCIDAD_SERVO_1 12
-#define VELOCIDAD_SERVO_1 13
-#define SET_VELOCIDAD_SERVO_1 14
-#define BACK_VELOCIDAD_SERVO_1 15
-#define INICIO_VELOCIDAD_SERVO_2 16
-#define VELOCIDAD_SERVO_2 17
-#define SET_VELOCIDAD_SERVO_2 18
-#define BACK_VELOCIDAD_SERVO_2 19
-#define INICIO_VUELTAS_PARA_PARO 20
-#define VUELTAS_PARA_PARO 21
-#define SET_VUELTAS_PARA_PARO 22
-#define BACK_VUELTAS_PARA_PARO 23
-#define INICIO_CANTIDAD_DE_CICLOS 24
-#define CANTIDAD_DE_CICLOS 25
-#define SET_CANTIDAD_DE_CICLOS 26
-#define BACK_CANTIDAD_DE_CICLOS 27
+#define JOG_PRODUCCION 6
+#define START_JOG_PRODUCCION 7
+#define M_PARAMETROS_SERVO1 8
+#define M_PARAMETROS_SERVO2 9
+#define M_PARAMETROS_VUELTAS_PARA_PARO 10
+#define M_PARAMETROS_CANTIDAD_CICLOS 11
+#define M_PRODUCCION 12
+#define M_PARAMETROS_BACK 13
+#define INICIO_VELOCIDAD_SERVO_1 14
+#define VELOCIDAD_SERVO_1 15
+#define SET_VELOCIDAD_SERVO_1 16
+#define BACK_VELOCIDAD_SERVO_1 17
+#define INICIO_VELOCIDAD_SERVO_2 18
+#define VELOCIDAD_SERVO_2 19
+#define SET_VELOCIDAD_SERVO_2 20
+#define BACK_VELOCIDAD_SERVO_2 21
+#define INICIO_VUELTAS_PARA_PARO 22
+#define VUELTAS_PARA_PARO 23
+#define SET_VUELTAS_PARA_PARO 24
+#define BACK_VUELTAS_PARA_PARO 25
+#define INICIO_CANTIDAD_DE_CICLOS 26
+#define CANTIDAD_DE_CICLOS 27
+#define SET_CANTIDAD_DE_CICLOS 28
+#define BACK_CANTIDAD_DE_CICLOS 29
+
+#define START1_PRODUCCION 30
 
 uint8_t estado;
 bool boton = false;
@@ -86,8 +94,14 @@ void setup()
   pinMode(35, INPUT);
   pinMode(sw, INPUT);
 
-  pinMode(PUL, OUTPUT);
-  pinMode(DIR, OUTPUT);
+  pinMode(pul_l, OUTPUT);
+  pinMode(pul_r, OUTPUT);
+  pinMode(dir_l, OUTPUT);
+  pinMode(dir_r, OUTPUT);
+  pinMode(enable_l, OUTPUT);
+  pinMode(enable_r, OUTPUT);
+  digitalWrite(enable_l, LOW);
+  digitalWrite(enable_r, LOW);
   pinMode(36, INPUT);
   pinMode(39, INPUT);
 
@@ -338,6 +352,55 @@ void loop()
 
     /*FIN PAGINA CANTIDAD_DE_CICLOS*/
 
+    /*INICIO PAGINA START PRODUCCION*/
+    if (submenu == 11)
+    {
+      if (0 < counter && counter < 2)
+      {
+        estado = START1_PRODUCCION;
+        page = 24;
+        delay(10);
+      }
+      if (2 < counter && counter < 4)
+      {
+        estado = START_PRODUCCION;
+        page = 25;
+        delay(10);
+      }
+      if (4 < counter && counter < 6)
+      {
+        estado = JOG_PRODUCCION;
+        page = 26;
+        delay(10);
+      }
+      if (6 < counter && counter < 8)
+      {
+        estado = BACK_PRODUCCION;
+        page = 27;
+        delay(10);
+      }
+    }
+    if (submenu == 12)
+    {
+      if (0 < counter && counter < 2)
+      {
+        estado = START_JOG_PRODUCCION;
+        page = 28;
+        delay(10);
+      }
+    }
+    if (submenu == 13)
+    {
+      if (0 < counter && counter < 2)
+      {
+        estado = STOP_PRODUCCION;
+        page = 29;
+        delay(10);
+      }
+    }
+
+    /*FIN PAGINA START PRODUCCION*/
+
     /*-----------------------------------------------------------------------------------------*/
 
     ////////////////////////////////////////////////////INICIO LIMITES ENCODER////////////////
@@ -376,6 +439,10 @@ void loop()
     {
       counter = 4;
     }
+    if (submenu == 11 && counter > 8)
+    {
+      counter = 8;
+    }
 
     if (counter <= 0)
     {
@@ -401,13 +468,6 @@ void loop()
     submenu = 1;
     counter = 0;
     estado = M_PARAMETROS_SERVO1;
-    delay(300);
-  }
-  if (digitalRead(sw) == HIGH && page == 2)
-  {
-    submenu = 100;
-    counter = 0;
-    estado = START_PRODUCCION;
     delay(300);
   }
   ///////////////////////////////////////////////////ACCION PULSADOR VELOCIDAD SERVO 1//////////////////////
@@ -534,6 +594,56 @@ void loop()
   }
   ///////////////////////////////////////////////////FIN ACCION PULSADOR CANTIDAD DE CICLOS
 
+  ///////////////////////////////////////////////////ACCION PULSADOR PRODUCCION////////////////////
+  if (digitalRead(sw) == HIGH && page == 2)
+  {
+    submenu = 11;
+    counter = 0;
+    estado = START1_PRODUCCION;
+    delay(300);
+  }
+  if (digitalRead(sw) == HIGH && page == 25)
+  {
+    submenu = 12;
+    counter = 0;
+    estado = STOP_PRODUCCION;
+    delay(300);
+  }
+  if (digitalRead(sw) == HIGH && page == 26)
+  {
+    /*
+    ///////////////////////////MIERDERO SERVOMOTOR////////////////////////////
+     digitalWrite(DIR,LOW);
+    for (int i=0; i<280000;i++)
+    {
+      digitalWrite(PUL,HIGH);
+      delayMicroseconds(100);
+      digitalWrite(PUL,LOW);
+      delayMicroseconds(100);
+    }
+    ////////////////////////FIN MIERDERO SERVOMOTOR/////////////////////////////////////*/
+    digitalWrite(enable_l, HIGH);
+    digitalWrite(enable_r, HIGH);
+    digitalWrite(dir_r, LOW);
+    digitalWrite(dir_l, LOW);
+    digitalWrite(pul_r, HIGH);
+    digitalWrite(pul_l, HIGH);
+    delayMicroseconds(700);
+    digitalWrite(pul_r, LOW);
+    digitalWrite(pul_l, LOW);
+    delayMicroseconds(700);
+    digitalWrite(enable_l, LOW);
+    digitalWrite(enable_r, LOW);
+  }
+  if (digitalRead(sw) == HIGH && page == 27)
+  {
+    submenu = 0;
+    counter = 0;
+    estado = PARAMETROS;
+    delay(300);
+  }
+  ///////////////////////////////////////////////////FIN ACCION PULSADOR PRODUCCION
+
   ///////////////////////////////////////////////////FIN ACCIONES PULSADORES/////////////////
 
   /* ------------------------------------------------------------------------------------------*/
@@ -608,10 +718,53 @@ void loop()
     delay(10);
     break;
 
+  case START1_PRODUCCION:
+
+    tft.fillScreen(TFT_WHITE);
+    tft.fillCircle(50, 270, 45, TFT_GREY);
+    tft.setCursor(20, 255);
+    tft.setTextSize(2);
+    tft.setTextColor(TFT_WHITE);
+    tft.println("JOG");
+
+    // tft.fillScreen(TFT_WHITE);
+    tft.fillCircle(430, 270, 45, TFT_GREY);
+    tft.setCursor(400, 250);
+    tft.setTextSize(2);
+    tft.setTextColor(TFT_WHITE);
+    tft.println("BACK");
+
+    tft.setTextColor(TFT_BLACK);
+    tft.setTextSize(3);
+    tft.setCursor(120, 80, 2);
+    tft.println("PRODUCCION");
+
+    tft.drawRoundRect(177, 165, 120, 80, 10, TFT_GREY);
+    // tft.fillRoundRect(177, 165, 120, 80, 10, TFT_GREEN);
+    tft.setTextColor(TFT_BLACK);
+    tft.setTextSize(3);
+    tft.setCursor(177, 175, 2);
+    tft.println("START");
+
+    if (digitalRead(sw))
+    {
+      delay(10);
+    }
+    estado = CERO;
+    delay(10);
+    break;
+
   case START_PRODUCCION:
 
     tft.fillScreen(TFT_WHITE);
-    tft.fillCircle(430, 270, 45, TFT_BLUE);
+    tft.fillCircle(50, 270, 45, TFT_GREY);
+    tft.setCursor(20, 255);
+    tft.setTextSize(2);
+    tft.setTextColor(TFT_WHITE);
+    tft.println("JOG");
+
+    // tft.fillScreen(TFT_WHITE);
+    tft.fillCircle(430, 270, 45, TFT_GREY);
     tft.setCursor(400, 250);
     tft.setTextSize(2);
     tft.setTextColor(TFT_WHITE);
@@ -639,21 +792,15 @@ void loop()
   case STOP_PRODUCCION:
 
     tft.fillScreen(TFT_WHITE);
-    tft.fillCircle(430, 270, 45, TFT_BLUE);
-    tft.setCursor(400, 250);
-    tft.setTextSize(2);
-    tft.setTextColor(TFT_WHITE);
-    tft.println("BACK");
-
     tft.setTextColor(TFT_BLACK);
     tft.setTextSize(3);
-    tft.setCursor(50, 70, 2);
+    tft.setCursor(120, 80, 2);
     tft.println("PRODUCCION");
 
-    tft.fillRoundRect(177, 165, 85, 80, 10, TFT_RED);
+    tft.fillRoundRect(177, 165, 120, 80, 10, TFT_RED);
     tft.setTextColor(TFT_BLACK);
     tft.setTextSize(3);
-    tft.setCursor(177, 170, 2);
+    tft.setCursor(177, 175, 2);
     tft.println("STOP");
 
     if (digitalRead(sw))
@@ -664,9 +811,52 @@ void loop()
     delay(10);
     break;
 
+  case JOG_PRODUCCION:
+
+    tft.fillScreen(TFT_WHITE);
+    tft.fillCircle(50, 270, 45, TFT_BLUE);
+    tft.setCursor(20, 255);
+    tft.setTextSize(2);
+    tft.setTextColor(TFT_WHITE);
+    tft.println("JOG");
+
+    // tft.fillScreen(TFT_WHITE);
+    tft.fillCircle(430, 270, 45, TFT_GREY);
+    tft.setCursor(400, 250);
+    tft.setTextSize(2);
+    tft.setTextColor(TFT_WHITE);
+    tft.println("BACK");
+
+    tft.setTextColor(TFT_BLACK);
+    tft.setTextSize(3);
+    tft.setCursor(120, 80, 2);
+    tft.println("PRODUCCION");
+
+    tft.drawRoundRect(177, 165, 120, 80, 10, TFT_GREY);
+    // tft.fillRoundRect(177, 165, 120, 80, 10, TFT_GREEN);
+    tft.setTextColor(TFT_BLACK);
+    tft.setTextSize(3);
+    tft.setCursor(177, 175, 2);
+    tft.println("START");
+
+    if (digitalRead(sw) == HIGH)
+    {
+      delay(10);
+    }
+    estado = CERO;
+    delay(10);
+    break;
+
   case BACK_PRODUCCION:
 
     tft.fillScreen(TFT_WHITE);
+    tft.fillCircle(50, 270, 45, TFT_GREY);
+    tft.setCursor(20, 255);
+    tft.setTextSize(2);
+    tft.setTextColor(TFT_WHITE);
+    tft.println("JOG");
+
+    // tft.fillScreen(TFT_WHITE);
     tft.fillCircle(430, 270, 45, TFT_BLUE);
     tft.setCursor(400, 250);
     tft.setTextSize(2);
@@ -675,14 +865,50 @@ void loop()
 
     tft.setTextColor(TFT_BLACK);
     tft.setTextSize(3);
-    tft.setCursor(50, 70, 2);
+    tft.setCursor(120, 80, 2);
     tft.println("PRODUCCION");
 
-    tft.fillRoundRect(197, 165, 85, 55, 10, TFT_RED);
+    tft.drawRoundRect(177, 165, 120, 80, 10, TFT_GREY);
+    // tft.fillRoundRect(177, 165, 120, 80, 10, TFT_GREEN);
     tft.setTextColor(TFT_BLACK);
     tft.setTextSize(3);
-    tft.setCursor(200, 170, 2);
-    tft.println("STOP");
+    tft.setCursor(177, 175, 2);
+    tft.println("START");
+
+    if (digitalRead(sw) == HIGH)
+    {
+      delay(10);
+    }
+    estado = CERO;
+    delay(10);
+    break;
+
+  case START_JOG_PRODUCCION:
+
+    tft.fillScreen(TFT_WHITE);
+    tft.fillCircle(50, 270, 45, TFT_GREEN);
+    tft.setCursor(20, 255);
+    tft.setTextSize(2);
+    tft.setTextColor(TFT_WHITE);
+    tft.println("JOG");
+
+    // tft.fillScreen(TFT_WHITE);
+    tft.fillCircle(430, 270, 45, TFT_GREY);
+    tft.setCursor(400, 250);
+    tft.setTextSize(2);
+    tft.setTextColor(TFT_WHITE);
+    tft.println("BACK");
+
+    tft.setTextColor(TFT_BLACK);
+    tft.setTextSize(3);
+    tft.setCursor(120, 80, 2);
+    tft.println("PRODUCCION");
+
+    tft.fillRoundRect(177, 165, 120, 80, 10, TFT_GREEN);
+    tft.setTextColor(TFT_BLACK);
+    tft.setTextSize(3);
+    tft.setCursor(177, 175, 2);
+    tft.println("START");
 
     if (digitalRead(sw) == HIGH)
     {
