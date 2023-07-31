@@ -50,6 +50,10 @@ int dir_r = 22;
 int enable_r = 16;
 int enable_l = 17;
 
+///////////Pines start y stop
+int start = 39;
+int stop = 36;
+
 ///////////////Estados Switch case/////////////////////
 
 #define CERO 0
@@ -90,10 +94,7 @@ bool boton = false;
 
 void setup()
 {
-  pinMode(34, INPUT);
-  pinMode(35, INPUT);
-  pinMode(sw, INPUT);
-
+  ///////////Pines servomotores
   pinMode(pul_l, OUTPUT);
   pinMode(pul_r, OUTPUT);
   pinMode(dir_l, OUTPUT);
@@ -102,10 +103,18 @@ void setup()
   pinMode(enable_r, OUTPUT);
   digitalWrite(enable_l, LOW);
   digitalWrite(enable_r, LOW);
-  pinMode(36, INPUT);
-  pinMode(39, INPUT);
 
+  ///////////Pines botones
+  pinMode(start, INPUT);
+  pinMode(stop, INPUT);
+
+  //// Pin pulsador encoder
+  pinMode(sw, INPUT);
   digitalWrite(sw, LOW);
+
+  //// Pines ISR
+  pinMode(34, INPUT);
+  pinMode(35, INPUT);
   attachInterrupt(34, isr, CHANGE);
   attachInterrupt(35, isr, CHANGE);
 
@@ -384,20 +393,20 @@ void loop()
     {
       if (0 < counter && counter < 2)
       {
-        estado = START_JOG_PRODUCCION;
+        estado = STOP_PRODUCCION;
         page = 28;
         delay(10);
       }
-    }
-    if (submenu == 13)
-    {
-      if (0 < counter && counter < 2)
-      {
-        estado = STOP_PRODUCCION;
-        page = 29;
-        delay(10);
-      }
-    }
+    } /*
+     if (submenu == 13)
+     {
+       if (0 < counter && counter < 2)
+       {
+         estado = STOP_PRODUCCION;
+         page = 29;
+         delay(10);
+       }
+     }*/
 
     /*FIN PAGINA START PRODUCCION*/
 
@@ -602,11 +611,52 @@ void loop()
     estado = START1_PRODUCCION;
     delay(300);
   }
-  if (digitalRead(sw) == HIGH && page == 25)
+  if (digitalRead(start) == LOW && page == 25)
   {
     submenu = 12;
     counter = 0;
     estado = STOP_PRODUCCION;
+
+    tft.fillScreen(TFT_WHITE);
+    tft.setTextColor(TFT_BLACK);
+    tft.setTextSize(3);
+    tft.setCursor(120, 80, 2);
+    tft.println("PRODUCCION");
+
+    tft.fillRoundRect(177, 165, 120, 80, 10, TFT_RED);
+    tft.setTextColor(TFT_BLACK);
+    tft.setTextSize(3);
+    tft.setCursor(177, 175, 2);
+    tft.println("STOP");
+
+    digitalWrite(enable_l, HIGH);
+    digitalWrite(enable_r, HIGH);
+    digitalWrite(dir_r, LOW);
+    digitalWrite(dir_l, LOW);
+
+    for (int j = vueltas_paro * 400; j > 0; j--)
+    {
+      if (digitalRead(stop) == LOW)
+      {
+        j = 0;
+        estado = START_PRODUCCION;
+        submenu = 11;
+        counter = 0;
+        break;
+      }
+
+      digitalWrite(pul_r, HIGH);
+      digitalWrite(pul_l, HIGH);
+      delayMicroseconds(700);
+      digitalWrite(pul_r, LOW);
+      digitalWrite(pul_l, LOW);
+      delayMicroseconds(700);
+      j--;
+      estado = STOP_PRODUCCION;
+    }
+    estado = START_PRODUCCION;
+    submenu = 11;
+    counter = 2;
     delay(300);
   }
   if (digitalRead(sw) == HIGH && page == 26)
