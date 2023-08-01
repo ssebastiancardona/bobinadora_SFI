@@ -30,7 +30,7 @@ int white = 0xFFFFFF;
 int counter = 0;
 int RPM_SERVO_1 = 0;
 int RPM_SERVO_2 = 0;
-int vueltas_paro = 0;
+int vueltas_paro = 200;
 int cantidad_ciclos = 0;
 int page = 0;
 int Ready = 1;
@@ -627,30 +627,44 @@ void loop()
     tft.setTextColor(TFT_BLACK);
     tft.setTextSize(3);
     tft.setCursor(177, 175, 2);
-    tft.println("STOP");
+    tft.println(" STOP");
 
     digitalWrite(enable_l, HIGH);
     digitalWrite(enable_r, HIGH);
     digitalWrite(dir_r, LOW);
     digitalWrite(dir_l, LOW);
 
-    for (int j = vueltas_paro * 400; j > 0; j--)
+    //////////////////////////////////////////////////////////
+    int acelerador = 500;
+    int velservo_r = 80;
+    int j = vueltas_paro * 400;
+
+    unsigned long interval = 50;
+    unsigned long previousMillis;
+
+    while (j > 0)
     {
-      if (digitalRead(stop) == LOW)
+      if (digitalRead(stop) == HIGH)
       {
         j = 0;
         estado = START_PRODUCCION;
         submenu = 11;
-        counter = 0;
+        counter = 2;
         break;
+      }
+      unsigned long currentMillis = millis();
+      if (currentMillis - previousMillis > interval)
+      {
+        acelerador--;
+        previousMillis = millis();
       }
 
       digitalWrite(pul_r, HIGH);
       digitalWrite(pul_l, HIGH);
-      delayMicroseconds(700);
+      delayMicroseconds(acelerador);
       digitalWrite(pul_r, LOW);
       digitalWrite(pul_l, LOW);
-      delayMicroseconds(700);
+      delayMicroseconds(acelerador);
       j--;
       estado = STOP_PRODUCCION;
     }
