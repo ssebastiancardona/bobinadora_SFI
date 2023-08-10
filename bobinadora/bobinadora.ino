@@ -2,10 +2,6 @@
 #include <SPI.h>
 #include <TFT_eSPI.h> // Hardware-specific library
 
-// JPEG decoder library
-// #include <JPEGDecoder.h>
-// #include "jpeg1.h"
-
 TFT_eSPI tft = TFT_eSPI(); // Invoke custom library
 
 #define TFT_GREY 0x5AEB // New colour
@@ -28,14 +24,17 @@ int white = 0xFFFFFF;
 #define data 34
 
 int counter = 0;
-int RPM_SERVO_1 = 0;
-int RPM_SERVO_2 = 0;
+unsigned int RPM_SERVO_1 = 200;
+unsigned int RPM_SERVO_2 = 100;
 int vueltas_paro = 200;
 int cantidad_ciclos = 0;
 int page = 0;
 int Ready = 1;
 int submenu = 0;
 int last_counter = 0;
+int velservo_1;
+int velservo_2;
+bool activo = false;
 bool clk_State;
 bool Last_State;
 bool dt_State;
@@ -43,8 +42,8 @@ bool dt_State;
 int sw = 19; /// suitch del encoder
 
 // pines servomotor
-int pul_l = 1;
-int dir_l = 3;
+// int pul_l = 1; // TX
+// int dir_l = 3; // RX
 int pul_r = 23;
 int dir_r = 22;
 int enable_r = 16;
@@ -92,12 +91,37 @@ int stop = 36;
 uint8_t estado;
 bool boton = false;
 
+/////////////////////////////////Estructura de comunicacion serial////////////////////////////////////
+
+struct servoMoveMessage
+{
+  float servoNum;
+};
+
+struct servoMoveMessage message;
+
+void sendStructure(byte *structurePointer, int structureLength)
+{
+  Serial.write(structurePointer, structureLength);
+}
+
+//////////////////////////////FIN Estructura de comunicacion serial////////////////////////////////////
+
 void setup()
 {
+  Serial.begin(9600);
+  velservo_1 = 75000 / RPM_SERVO_1;
+  delay(100);
+  pinMode(15, OUTPUT);
+  message.servoNum = velservo_1;
+  digitalWrite(15, HIGH);
+  delay(10);
+  sendStructure((byte *)&message, sizeof(message));
+
   ///////////Pines servomotores
-  pinMode(pul_l, OUTPUT);
+  // pinMode(pul_l, OUTPUT);
   pinMode(pul_r, OUTPUT);
-  pinMode(dir_l, OUTPUT);
+  // pinMode(dir_l, OUTPUT);
   pinMode(dir_r, OUTPUT);
   pinMode(enable_l, OUTPUT);
   pinMode(enable_r, OUTPUT);
@@ -144,24 +168,21 @@ void setup()
   tft.setCursor(135, 215, 2);
   tft.println("Produccion");
   delay(10);
-  /*
-    ///////////////////////////MIERDERO SERVOMOTOR////////////////////////////
-     digitalWrite(DIR,LOW);
-    for (int i=0; i<280000;i++)
-    {
-      digitalWrite(PUL,HIGH);
-      delayMicroseconds(100);
-      digitalWrite(PUL,LOW);
-      delayMicroseconds(100);
-    }
-    ////////////////////////FIN MIERDERO SERVOMOTOR/////////////////////////////////////*/
 }
 
 void loop()
 {
-  ///////////////////////////Cambios de Submenu/////////////////////////////
+  ///////////////////////////Variables velocidad servos/////////////////////////////
+  velservo_1 = 75000 / RPM_SERVO_1; // 75000 / 100 = 750
+  float interval_s1 = 75000 / RPM_SERVO_1;
+  interval_s1 = interval_s1 / 100;
+  float interval_s2 = 75000 / RPM_SERVO_2;
+  interval_s2 = interval_s2 / 10;
+  velservo_2 = 75000 / RPM_SERVO_2;
 
-  ///////////////////////////Fin Cambios de Submenu//////////////////////////
+  message.servoNum = velservo_1;
+
+  ///////////////////////////Fin Variables velocidad servos//////////////////////////
 
   if ((last_counter > counter) || (last_counter < counter) || (digitalRead(sw) == HIGH)) // Only print on the LCD when a step is detected or the button is pushed.
   {
@@ -457,6 +478,26 @@ void loop()
     {
       counter = 0;
     }
+    /////////////////Limites variables RPM//////////////////////
+    if (RPM_SERVO_1 > 850)
+    {
+      RPM_SERVO_1 = 850;
+    }
+    if (RPM_SERVO_1 <= 0)
+    {
+      RPM_SERVO_1 = 0;
+      delay(10);
+    }
+    if (RPM_SERVO_2 > 850)
+    {
+      RPM_SERVO_2 = 850;
+    }
+    if (RPM_SERVO_2 <= 0)
+    {
+      RPM_SERVO_2 = 0;
+      delay(10);
+    }
+    /////////////////Fin Limites variables RPM//////////////////////
   }
 
   ////////////////////////////////////////////////////FIN LIMITES ENCODER////////////////.
@@ -613,9 +654,16 @@ void loop()
   }
   if (digitalRead(start) == LOW && page == 25)
   {
+    int j = vueltas_paro * 400;
     submenu = 12;
     counter = 0;
     estado = STOP_PRODUCCION;
+    message.servoNum = velservo_1;
+    digitalWrite(enable_l, HIGH);
+    digitalWrite(15, HIGH);
+    delay(10);
+    sendStructure((byte *)&message, sizeof(message));
+    digitalWrite(15, LOW);
 
     tft.fillScreen(TFT_WHITE);
     tft.setTextColor(TFT_BLACK);
@@ -629,73 +677,67 @@ void loop()
     tft.setCursor(177, 175, 2);
     tft.println(" STOP");
 
-    digitalWrite(enable_l, HIGH);
-    digitalWrite(enable_r, HIGH);
-    digitalWrite(dir_r, LOW);
-    digitalWrite(dir_l, LOW);
-
-    //////////////////////////////////////////////////////////
-    int acelerador = 500;
-    int velservo_r = 80;
-    int j = vueltas_paro * 400;
-
-    unsigned long interval = 50;
-    unsigned long previousMillis;
-
+    int aceleracion = velservo_2 * 15;
     while (j > 0)
     {
       if (digitalRead(stop) == HIGH)
       {
         j = 0;
+        digitalWrite(15, HIGH);
         estado = START_PRODUCCION;
         submenu = 11;
         counter = 2;
         break;
       }
-      unsigned long currentMillis = millis();
-      if (currentMillis - previousMillis > interval)
+      while (aceleracion > velservo_2)
       {
-        acelerador--;
-        previousMillis = millis();
+        if (digitalRead(stop) == HIGH)
+        {
+          j = 0;
+          digitalWrite(15, HIGH);
+          estado = START_PRODUCCION;
+          submenu = 11;
+          counter = 2;
+          break;
+        }
+        digitalWrite(15, LOW);
+        digitalWrite(enable_l, HIGH);
+        digitalWrite(enable_r, HIGH);
+        digitalWrite(pul_r, HIGH);
+        delayMicroseconds(aceleracion);
+        digitalWrite(pul_r, LOW);
+        delayMicroseconds(aceleracion);
+        aceleracion--;
       }
 
+      digitalWrite(15, LOW);
+      digitalWrite(enable_l, HIGH);
+      digitalWrite(enable_r, HIGH);
       digitalWrite(pul_r, HIGH);
-      digitalWrite(pul_l, HIGH);
-      delayMicroseconds(acelerador);
+      delayMicroseconds(velservo_2);
       digitalWrite(pul_r, LOW);
-      digitalWrite(pul_l, LOW);
-      delayMicroseconds(acelerador);
+      delayMicroseconds(velservo_2);
+
       j--;
-      estado = STOP_PRODUCCION;
     }
+    digitalWrite(15, HIGH);
     estado = START_PRODUCCION;
     submenu = 11;
     counter = 2;
+    activo = false;
     delay(300);
   }
   if (digitalRead(sw) == HIGH && page == 26)
   {
-    /*
-    ///////////////////////////MIERDERO SERVOMOTOR////////////////////////////
-     digitalWrite(DIR,LOW);
-    for (int i=0; i<280000;i++)
-    {
-      digitalWrite(PUL,HIGH);
-      delayMicroseconds(100);
-      digitalWrite(PUL,LOW);
-      delayMicroseconds(100);
-    }
-    ////////////////////////FIN MIERDERO SERVOMOTOR/////////////////////////////////////*/
     digitalWrite(enable_l, HIGH);
     digitalWrite(enable_r, HIGH);
     digitalWrite(dir_r, LOW);
-    digitalWrite(dir_l, LOW);
+
     digitalWrite(pul_r, HIGH);
-    digitalWrite(pul_l, HIGH);
     delayMicroseconds(700);
     digitalWrite(pul_r, LOW);
-    digitalWrite(pul_l, LOW);
     delayMicroseconds(700);
+
     digitalWrite(enable_l, LOW);
     digitalWrite(enable_r, LOW);
   }
